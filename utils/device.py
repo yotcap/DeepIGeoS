@@ -6,11 +6,11 @@ def device_config(config):
         print("GPU is available. Run with GPU")
         try:
             if len(config.exp.gpu_ids) == 1:
-                # Single GPU
+                # 单核 GPU
                 config.exp.multi_gpu = False
                 config.exp.device = torch.device(f"cuda:{config.exp.gpu_ids[0]}")
             else:
-                # Multi GPU
+                # 多核 GPU
                 if len(config.exp.gpu_ids) != torch.cuda.device_count():
                     raise ValueError(f"All GPU ids {config.exp.gpu_ids} are not available!")
                 config.exp.multi_gpu = True

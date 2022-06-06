@@ -7,7 +7,7 @@ def get_transform(split):
         transform = [
             tio.ToCanonical(),
             tio.Resample(1),
-            tio.CropOrPad(mask_name='crop_mask'), # crop only object region
+            tio.CropOrPad(mask_name='crop_mask'), # 仅裁剪对象区域
             tio.RandomAffine(degrees=[-np.pi/8, np.pi/8], scales=[0.8, 1.25]),
             tio.RandomFlip(axes=(0, 1, 2)),
             tio.RemapLabels({2:1, 3:1, 4:1}),

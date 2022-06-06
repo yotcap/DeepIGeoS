@@ -4,11 +4,11 @@ from dotmap import DotMap
 
 
 def get_config_from_json(json_file):
-    # parse the configurations from config.json
+    # 解析 config.json 的配置
     with open(json_file, 'r') as config_file:
         config_dict = json.load(config_file)
 
-    # convert the dictionary to a namespace
+    # 赋值
     config = DotMap(config_dict)
 
     return config, config_dict

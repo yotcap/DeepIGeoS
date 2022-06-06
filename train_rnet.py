@@ -19,7 +19,7 @@ from trainers.brats_3d_rnet_trainer import Brats3dRnetTrainer
 
 
 def main():
-    # Get config path & process config file
+    # 获取配置路径，处理配置文件
     try:
         args = get_args()
         config = process_config(args.config)
@@ -27,7 +27,7 @@ def main():
         print("missing or invalid arguments")
         exit(0)
 
-    # Create experiments dirs
+    # 创建实验的 dir
     create_dirs((
         config.exp.tensorboard_dir, 
         config.exp.last_ckpt_dir, 
@@ -35,18 +35,18 @@ def main():
         config.exp.val_pred_dir
     ))
 
-    # Device config (GPU / CPU)
+    # 硬件配置（GPU / CPU）
     device_config(config)
 
-    # Create logger 
+    # 创建 logger
     if config.exp.multi_gpu:
-        # shared between processes
+        # 进程之间共享
         BaseManager.register('MetricsLogger', MetricsLogger)
         manager = BaseManager()
         manager.start()
         logger = manager.MetricsLogger(config)
 
-    # Run main workers
+    # 运行主 workers
     if config.exp.multi_gpu:
         mp.spawn(
             main_worker, 
@@ -54,62 +54,61 @@ def main():
             args=(config, logger,)
         )
     else:
-        # Set random seed
+        # 随机种子
         random.seed(1111)
         np.random.seed(1111)
         torch.manual_seed(1111)
 
-        # Load datasets
+        # 载入数据集
         dataloaders = get_dataloaders(config)
         
-        # Build model
+        # 构建 model
         model = build_model(config)
 
-        # Create logger
+        # 创建 logger
         logger = MetricsLogger(config)
 
-        # Create trainer
+        # 创建 trainer
         trainer = Brats3dRnetTrainer(model, dataloaders, config, logger)
 
-        # Train
+        # 训练
         trainer.train()
 
 
 def main_worker(rank, config, logger):
-    # Initialize worker group
+    # 初始化 worker group
     setup(rank, config.exp.world_size)
 
-    # Set cuda visible device
+    # 设置 cuda visible device
     torch.cuda.set_device(rank)
     
-    # Set configures for each gpu
+    # 为每个 GPU 设置
     config.data.num_workers = int(config.data.num_workers / config.exp.ngpus_per_node)
     config.exp.device = torch.device(f"cuda:{rank}")
     config.exp.rank = rank
 
-    # Set random seed
     random.seed(1111)
     np.random.seed(1111)
     torch.manual_seed(1111)
     
-    # Load datasets
+    # 载入数据集
     dataloaders = get_dataloaders(config)
     
-    # Build model
+    # 构建模型
     model = build_model(config)
 
-    # Create trainer
+    # 创建 trainer
     trainer = Brats3dRnetTrainer(model, dataloaders, config, logger)
 
-    # Train
+    # 训练
     trainer.train()
 
-    # Cleanup process
+    # 清除进程
     cleanup()
 
 
 def setup(rank, world_size):
-    # initialize the process group
+    # 初始化进程组
     dist.init_process_group(
         backend='nccl',
         init_method='tcp://127.0.0.1:12355',

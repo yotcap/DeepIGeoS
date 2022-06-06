@@ -76,7 +76,7 @@ class Brats3dPnetTrainer:
             print("No trained checkpoints. Start training from scratch.")
                 
     def save_checkpoint(self, epoch):
-        # Save last checkpoint
+        # 保存最后一个checkpoint
         if self.config.exp.multi_gpu:
             state_dict = self.model.module.state_dict()
         else:
@@ -90,7 +90,7 @@ class Brats3dPnetTrainer:
         if len(last_ckpts) > self.config.exp.max_to_keep_ckpt:
             os.remove(f"{self.config.exp.last_ckpt_dir}/{last_ckpts[0]}")
         
-        # Save best checkpoint
+        # 保存最好的checkpoint
         if self.best_loss > self.logger.get_value("valid", "loss"):
             self.best_loss = self.logger.get_value("valid", "loss")
             torch.save(state_dict, f"{self.config.exp.best_ckpt_dir}/best_ckpt_epoch_{epoch:04}.pt")
@@ -206,21 +206,21 @@ class Brats3dPnetTrainer:
     def train(self):
         for epoch in range(self.start_epoch, self.config.trainer.num_epochs):
             print(f"Epoch {epoch:4.0f}/{self.config.trainer.num_epochs - 1}")
-            # Sync all processes before start training
+            # 在开始训练之前同步所有的进程
             if self.config.exp.multi_gpu:
                 dist.barrier()
 
-            # Shuffle each sampler
+            # 随机排序每个sampler
             if self.config.exp.multi_gpu:
                 self.dataloaders["train"].sampler.set_epoch(epoch)
 
-            # Train
+            # 训练
             train_result_dict = self.train_epoch()
             self.logger.update("train", train_result_dict)
 
-            # Valid
+            # 验证
             if self.config.exp.save_val_pred:
-                # save valid prediction
+                # 保存有效的预测
                 val_save_dir_epoch = os.path.join(self.config.exp.val_pred_dir, f"epoch_{epoch:03}")
                 if not self.config.exp.multi_gpu or (self.config.exp.multi_gpu and self.config.exp.rank == 0):
                     create_dirs([val_save_dir_epoch])
@@ -228,25 +228,24 @@ class Brats3dPnetTrainer:
                     dist.barrier()
                 valid_result_dict = self.valid_epoch(val_save_dir_epoch)
             else:
-                # without saving
+                # 不保存
                 valid_result_dict = self.valid_epoch()
             self.logger.update("valid", valid_result_dict)
 
-            # Learning rate scheduling
             self.lr_scheduler.step()
 
-            # Wait other process before save and logging
+            # 保存和日志记录之前等待其它进程
             if self.config.exp.multi_gpu:
                 dist.barrier()
 
             if not self.config.exp.multi_gpu or (self.config.exp.multi_gpu and self.config.exp.rank == 0):
-                # Save checkpoint
+                # 保存checkpoint
                 self.save_checkpoint(epoch)
 
-                # Save logs to tensorboard
+                # 保存log到tensorboard
                 self.logger.write_tensorboard(step=epoch)
 
-                # Print epoch history and reset logger
+                # 打印本次周期历史，并重置logger
                 self.logger.summarize("train")
                 self.logger.summarize("valid")
                 self.logger.reset()

@@ -195,25 +195,25 @@ def pnet_inference(
     device
 ):
     """
-    P-Net inference function
-    
-    Args:
-        image_path:     file path of input image (ex. image_path.nii.gz)
-        save_path:      file path to save result (ex. pnet_pred.nii.gz)
-        pnet:           trained pnet model (torch.nn.Module)
-        transform:      preprocessing transforms (torchio.Compose)
-        norm_transform: preprocessing transforms (normalization)
-        device:         torch device (torch.device)
+        P-Net inference function
+
+        参数：
+            image_path:     输入图像的文件路径（例：image_path.nii.gz）
+            save_path:      保存结果的路径（例：pnet_pred.nii.gz）
+            pnet:           训练好的 pnet 模型（torch.nn.Module）
+            transform:      预处理 transforms（torchio.Compose）
+            norm_transform: 预处理 transforms（normalization）
+            device:         torch device (torch.device)
     """
 
-    # read image and make subject to apply transform
+    # 读取图片并使其应用转换
     subject = tio.Subject(
         image = tio.ScalarImage(image_path),
     )
     subject = transform(subject)
     subject = norm_transform(subject)
 
-    # make numpy array to torch tensor
+    # 使 numpy array 到 torch tensor
     input_image = subject.image.data
     input_tensor = input_image.unsqueeze(dim=0).to(device)
 
@@ -221,14 +221,14 @@ def pnet_inference(
     with torch.no_grad():
         pred_logits = pnet(input_tensor)
     
-    # logits to labels
+    # logits 到 labels
     pred_labels = torch.argmax(pred_logits, dim=1)
 
-    # labels to one hot labels (ex. [1, 2, 3] -> [[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    # labels 到一个 hot labels （例：[1, 2, 3] -> [[1, 0, 0], [0, 1, 0], [0, 0, 1]]）
     pred_onehot = torch.nn.functional.one_hot(pred_labels, 2).permute(0, 4, 1, 2, 3)
     pred_onehot_target = pred_onehot[:, 1, ...]
 
-    # save result
+    # 保存结果
     pred_labelmap = tio.LabelMap(tensor=pred_onehot_target.cpu())
     pred_labelmap.save(save_path)    
     
@@ -245,21 +245,21 @@ def rnet_inference(
     device
 ):
     """
-    R-Net inference function
-    
-    Args:
-        image_path:     file path of input image (ex. image_path.nii.gz)
-        pnet_pred_path: file path of pnet prediction label (ex. pnet_pred.nii.gz)
-        fg_point_path:  foreground user interaction points file path (ex. fg_points.npy)
-        bg_point_path:  background user interaction points file path (ex. bg_points.npy)
-        save_path:      file path to save result (ex. pnet_pred.nii.gz)
-        rnet:           trained rnet model (torch.nn.Module)
-        transform:      preprocessing transforms (torchio.Compose)
-        norm_transform: preprocessing transforms (normalization)
-        device:         torch device (torch.device)
+        R-Net inference function
+
+        参数：
+            image_path:
+            pnet_pred_path:     pnet 预测标签文件路径（例：pnet_pred.nii.gz）
+            fg_point_path:      用户交互的前景点文件地址（例：fg_points.npy）
+            bg_point_path:      用户交互的后景点文件地址（例：bg_points.npy）
+            save_path:          保存结果的路径（例：pnet_pred.nii.gz）
+            rnet:               训练好的 rnet 模型（torch.nn.Module）
+            transform:
+            norm_transform:
+            device:
     """
 
-    # read image and pnet prediction and make subject to apply transform
+    # 读取图片并使其应用转换
     subject = tio.Subject(
         image = tio.ScalarImage(image_path),
         pnet_pred = tio.LabelMap(pnet_pred_path)
@@ -267,7 +267,6 @@ def rnet_inference(
     subject = transform(subject)
     subject_norm = norm_transform(subject)
 
-    # cast numpy array to torch tensor
     input_image = subject.image.data
     input_image_norm = subject_norm.image.data
     input_tensor_norm = input_image_norm.unsqueeze(dim=0).to(device)
@@ -276,16 +275,15 @@ def rnet_inference(
     pnet_pred_label = pnet_pred.data
     pnet_pred_tensor = pnet_pred_label.unsqueeze(dim=0).to(device)
 
-    # read random point numpy array
     sf, sb = np.load(fg_point_path), np.load(bg_point_path)
 
-    # get geodismap from random points and apply transform
+    # 从随机点中过去测地距离图，并应用 transform
     sf, sb = sf.astype(np.float32), sb.astype(np.float32)
     fore_dist_map, back_dist_map = geodismap(sf, sb, input_image.numpy())
     fore_dist_map = torch.Tensor(norm_transform(np.expand_dims(fore_dist_map, axis=0)))
     back_dist_map = torch.Tensor(norm_transform(np.expand_dims(back_dist_map, axis=0)))
 
-    # make rnet input tensor
+    # 使 rnet 输入到 tensor 中
     rnet_inputs = torch.cat([
         input_tensor_norm,
         pnet_pred_tensor, 
@@ -297,13 +295,11 @@ def rnet_inference(
     with torch.no_grad():
         pred_logits = rnet(rnet_inputs)
     
-    # logits to labels
     pred_labels = torch.argmax(pred_logits, dim=1)
 
-    # labels to one hot labels (ex. [1, 2, 3] -> [[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     pred_onehot = torch.nn.functional.one_hot(pred_labels, 2).permute(0, 4, 1, 2, 3)
     pred_onehot_target = pred_onehot[:, 1, ...]
 
-    # save result
+    # 保存结果
     pred_labelmap = tio.LabelMap(tensor=pred_onehot_target.cpu())
     pred_labelmap.save(save_path)

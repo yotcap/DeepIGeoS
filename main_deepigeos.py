@@ -54,28 +54,28 @@ class MainDialog(QDialog):
             os.makedirs('../res/%d/seg/Z' % self.usrId)
             os.makedirs('../res/%d/result' % self.usrId)
     
-    def Button_click(self):  # get file url and nibabel to numpy
+    def Button_click(self):  # 对医学图像进行读写解析
         file_names = QFileDialog.getOpenFileName(self)
         self.img_file_names = file_names
         self.imgs = nib.load(self.img_file_names[0])
         self.imgs = nib.as_closest_canonical(self.imgs).get_fdata()
 
-    def Button6_click(self):   # run p-net 
-        # test file paths
+    def Button6_click(self):   # 运行 P-Net
+        # 检查文件路径
         test_images = self.img_file_names[0]
         save_dir = f'../res/{self.usrId}/result'
 
-        # preprocessing
+        # 预处理
         test_transform = get_transform("valid")
 
-        # device config
+        # 配置
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         
-        # model weight file paths
+        # model 权重文件路径
         pnet_best_ckpt_dir = "./experiments/best_ckpts/brats3d_pnet_init_train"
         pnet_best_ckpt_path = sorted(glob.glob(f"{pnet_best_ckpt_dir}/*.pt"))[-1]
 
-        # load model weights
+        # 载入 model
         pnet = P_RNet3D(c_in=1, c_blk=16, n_classes=2).to(device)
         pnet.load_state_dict(torch.load(pnet_best_ckpt_path))
         pnet.eval()
@@ -92,23 +92,24 @@ class MainDialog(QDialog):
         self.segs = nib.load(save_path_pnet)
         self.segs = nib.as_closest_canonical(self.segs).get_fdata()
         self.img, self.seg = nextImage(self.usrId, self.imgs, self.segs, self.ax, self.count, pn=self.pn)
-        self.label.setText('COMPLETE, Click Axis') #텍스트 변환 
-        self.label.setFont(QtGui.QFont("궁서",30)) #폰트,크기 조절 
-        self.label.setStyleSheet("Color : black") #글자색 변환
+        # 提示文字
+        self.label.setText('COMPLETE, Click Axis')
+        self.label.setFont(QtGui.QFont("Arial",30))
+        self.label.setStyleSheet("Color : black")
         
-    def Button3_click(self):   # display x-axis images
+    def Button3_click(self):   # 显示x轴图像
         self.count = 120
         self.ax = 0
         self.img, self.seg = nextImage(self.usrId, self.imgs, self.segs, self.ax, self.count, pn=self.pn)
         self.update_show()
         
-    def Button4_click(self):   # display y-axis images
+    def Button4_click(self):   # 显示y轴图像
         self.count = 120
         self.ax = 1
         self.img, self.seg = nextImage(self.usrId, self.imgs, self.segs, self.ax, self.count, pn=self.pn)
         self.update_show()
         
-    def Button5_click(self):   # display z-axis images
+    def Button5_click(self):   # 显示z轴图像
         self.count = 75
         self.ax = 2
         self.img, self.seg = nextImage(self.usrId, self.imgs, self.segs, self.ax, self.count, pn=self.pn)
@@ -118,16 +119,16 @@ class MainDialog(QDialog):
     def Button2_click(self): 
         result = nib.Nifti1Image(self.segs, np.eye(4))
         nib.save(result, os.path.join(f'../res/{self.usrId}/', 'final_result.nii.gz')) 
-        self.label.setText('Save Complete') #텍스트 변환 
-        self.label.setFont(QtGui.QFont("궁서",30)) #폰트,크기 조절 
-        self.label.setStyleSheet("Color : black") #글자색 변환
+        self.label.setText('Save Complete')
+        self.label.setFont(QtGui.QFont("Arial",30))
+        self.label.setStyleSheet("Color : black")
         
-    def Button7_click(self):   # run r-net 
-        # int_result 생성
+    def Button7_click(self):   # 运行 R-Net
+        # 初始化 int_result
         path = f'../res/{self.usrId}/seg/'
         int_pos_result, int_neg_result = save_func(self.imgs, path, self.usrId)
         
-        # 이전 수행한 int_result 삭제
+        # 清除 int_result 的缓存
         file_path = []
         for (root, directories, files) in os.walk(path):
             for file in files:
@@ -137,10 +138,10 @@ class MainDialog(QDialog):
         test_images = self.img_file_names[0]
         save_dir = f'../res/{self.usrId}/result'
         
-        # preprocessing
+        # 预处理
         test_transform = get_transform("valid")
 
-        # device config
+        # 配置
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         
         rnet_best_ckpt_dir = "./experiments/best_ckpts/brats3d_rnet_init_train"
@@ -167,11 +168,11 @@ class MainDialog(QDialog):
         self.segs = nib.load(save_path_rnet)
         self.segs = nib.as_closest_canonical(self.segs).get_fdata()
         self.img, self.seg = nextImage(self.usrId, self.imgs, self.segs, self.ax, self.count, pn=self.pn)
-        self.label.setText('COMPLETE, Click Axis') #텍스트 변환 
-        self.label.setFont(QtGui.QFont("궁서",30)) #폰트,크기 조절 
-        self.label.setStyleSheet("Color : black") #글자색 변환
+        self.label.setText('COMPLETE, Click Axis')
+        self.label.setFont(QtGui.QFont("Arial",30))
+        self.label.setStyleSheet("Color : black")
 
-    def update_show(self):   # input numpy image to Qlabel
+    def update_show(self):  # numpy的图像输入到Qlabel
         new_img = cv2.addWeighted(self.img, 0.7, self.seg, 0.3, 0)
         qimg = QImage(new_img.data, new_img.shape[1], new_img.shape[0], new_img.strides[0], QImage.Format_Grayscale8)
         self.label.setPixmap(QPixmap.fromImage(qimg))
@@ -179,12 +180,12 @@ class MainDialog(QDialog):
         if self.ax==0 : axis='Sagittal'
         elif self.ax==1 : axis='Coronal'
         elif self.ax==2 : axis='Axial'
-        self.label_2.setText(f'{axis} : {self.count}') #텍스트 변환 
-        self.label_2.setFont(QtGui.QFont("궁서",20)) #폰트,크기 조절 
-        self.label_2.setStyleSheet("Color : blue") #글자색 변환
+        self.label_2.setText(f'{axis} : {self.count}')
+        self.label_2.setFont(QtGui.QFont("Arial",20))
+        self.label_2.setStyleSheet("Color : blue")
         
         
-    def wheelEvent(self, event):   # mouse scroll event
+    def wheelEvent(self, event):   # event 鼠标滚轮
 
         delta = event.angleDelta()
 
@@ -199,7 +200,7 @@ class MainDialog(QDialog):
             self.update_show()    
 
 
-    def mousePressEvent(self, event):  #event : QMouseEvent
+    def mousePressEvent(self, event):  # event 鼠标点击
         #clk = (event.x(), event.y())
         if event.buttons() & Qt.LeftButton:
             self.callback_left(event.pos())
@@ -207,13 +208,13 @@ class MainDialog(QDialog):
             self.callback_right(event.pos())
     
     
-    def callback_left(self, clk):   # mouse left click event
+    def callback_left(self, clk):   # event 鼠标左击
         self.pn = 1
         self.img, self.seg = nextImage(self.usrId, self.imgs, self.segs, self.ax, self.count, pn=self.pn, clk=clk)
 
         self.update_show()
 
-    def callback_right(self, clk):   # mouse right click event
+    def callback_right(self, clk):   # event 鼠标右击
         self.pn = 2
         self.img, self.seg = nextImage(self.usrId, self.imgs, self.segs, self.ax, self.count, pn=self.pn, clk=clk)
 

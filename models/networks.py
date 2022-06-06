@@ -5,12 +5,12 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 class P_RNet3D(nn.Module):
     '''
-    3D P/R-Net Architectures
+    3D P/R-Net 结构
     '''
     def __init__(self, c_in, c_blk, n_classes, init_weights=True):
         super().__init__()
 
-        # Conv blocks (resolution preserving)
+        # 卷积块（保持分辨率）
         self.block1 = nn.Sequential(
             nn.Conv3d(c_in, c_blk, kernel_size=(3, 3, 3), stride=1, padding=(1, 1, 1), dilation=(1, 1, 1)),
             nn.ReLU(),
@@ -72,7 +72,7 @@ class P_RNet3D(nn.Module):
             nn.ReLU(),
         )
 
-        # Classifier block (resolution preserving)
+        # 分类器（保持分辨率）
         self.block6 = nn.Sequential(
             nn.Dropout(p=0.5),
             nn.Conv3d((c_blk//4)*5, c_blk, kernel_size=(1, 1, 1), stride=1, padding=0, dilation=1),

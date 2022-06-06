@@ -10,7 +10,7 @@ import GeodisTK
 
 def focusregion_index(pred_array):
 
-    """find index for each axis which has the biggest summation value"""
+    """ 找到具有最大和值的轴的索引 """
 
     # pred_array (H,W,D)
 
@@ -39,13 +39,12 @@ def focusregion_index(pred_array):
 
 def randompoint(seg):
 
-    # random point selection via component analysis
+    # 通过组件分析随机选择
 
-    """Then the user interactions on each mis-segmented
-    region are simulated by randomly sampling n pixels in that
-    region. Suppose the size of one connected under-segmented
-    or over-segmented region is Nm, we set n for that region to
-    0 if Nm < 30 and dNm/100 e otherwise based on experience."""
+    """ 
+        在错误的分割区域中随机采样 n 个像素来模拟用户的交互。
+        如果欠分割/过分割的区域像素为 Nm，如果 Nm < 30 则 n=0，否则 n=Nm/100
+    """
 
     seg_shape = seg.shape
     seg_array = np.array(seg, dtype=np.uint8)
@@ -102,11 +101,11 @@ def randompoint(seg):
 
 
 def randominteraction(pred_array, label_array):
-    # oversegmented regions
+    # 过分割区域
     overseg = np.where(pred_array - label_array == 1, 1, 0)
     sb = randompoint(overseg)  # background
 
-    # undersegmented regions
+    # 欠分割区域
     underseg = np.where(pred_array - label_array == -1, 1, 0)
     sf = randompoint(underseg)  # foreground
     return sb, sf
@@ -114,23 +113,21 @@ def randominteraction(pred_array, label_array):
 
 def geodismap(sf, sb, input_np):
 
-    # shape needs to be aligned.
-    # original image shape : h, w, d
+    # shape 需要一致
+    # 原始图像尺寸为：h, w, d
 
-    # sf: foreground interaction (under segmented)
-    # sb: background interaction (over segmented)
+    # sf: 前景交互（欠分割）
+    # sb: 后景交互（过分割）
 
-    """
-    Get 3D geodesic disntance by raser scanning.
-    I: input image array, can have multiple channels, with shape [D, H, W] or [D, H, W, C]
-       Type should be np.float32.
-    S: binary image where non-zero pixels are used as seeds, with shape [D, H, W]
-       Type should be np.uint8.
-    spacing: a tuple of float numbers for pixel spacing along D, H and W dimensions respectively.
-    lamb: weighting betwween 0.0 and 1.0
-          if lamb==0.0, return spatial euclidean distance without considering gradient
-          if lamb==1.0, the distance is based on gradient only without using spatial distance
-    iter: number of iteration for raster scanning.
+    """ 
+        使用栅格扫描获得 3D 测地线距离。
+        I: 输入图像 array，能够得到多通道，shape [D, H, W] 或 [D, H, W, C]，类型应为 np.float32。
+        S: 二进制图像非零像素用作种子，shape [D, H, W]，类型应为 np.uint8。
+        spacing: 分别沿 D、H 和 W 维度的像素间距的浮点数元组。
+        lamb: 0.0-1.0之间的权重
+            如果 lamb==0.0，返回空间欧几里得距离而不考虑梯度
+            如果 lamb==1.0，距离仅基于梯度，而无需使用空间距离
+        iter: 栅格扫描的枚举数
     """
 
     I = np.squeeze(input_np, axis=0).transpose(2, 0, 1)
